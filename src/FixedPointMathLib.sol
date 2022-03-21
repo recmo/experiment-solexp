@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.10;
 
+import "./test/console.sol";
+
 library FixedPointMathLib {
         // 1
     int256 private constant FIXED_1 = int256(0x0000000000000000000000000000000080000000000000000000000000000000);
@@ -146,98 +148,62 @@ library FixedPointMathLib {
         }
     }
 
-    /// @dev Compute the natural exponent for a fixed-point number EXP_MIN_VAL <= `x` <= EXP_MAX_VAL
-    function exp(int256 x) internal pure returns (int256 r) { unchecked {
-        if (x < EXP_MIN_VAL) {
-            // Saturate to zero below EXP_MIN_VAL.
+    function exp_m(int256 x) internal returns (int256) { unchecked {
+        // Input x is in fixed point format, with scale factor 1/1e18.
+
+        // When the result is < 0.5 we return zero. This happens when
+        // x <= floor(log(0.5e18) * 1e18) ~ -42e18
+        if (x <= -42139678854452767551) {
             return 0;
         }
-        if (x == 0) {
-            return FIXED_1;
-        }
-        require(
-            x <= EXP_MAX_VAL,
-            "VALUE_TOO_LARGE"
-        );
 
-        // Rewrite the input as a product of natural exponents and a
-        // single residual q, where q is a number of small magnitude.
-        // For example: e^-34.419 = e^(-32 - 2 - 0.25 - 0.125 - 0.044)
-        //              = e^-32 * e^-2 * e^-0.25 * e^-0.125 * e^-0.044
-        //              -> q = -0.044
+        // When the result is > (2**255 - 1) / 1e18 we can not represent it
+        // as an int256. This happens when x >= floor(log((2**255 -1) / 1e18) * 1e18).
+        if (x >= 135305999368893231589) {
+            revert("Overflow");
+        }
 
-        // y = x % 0.125 (the residual)
-        int256 y = x % 0x0000000000000000000000000000000010000000000000000000000000000000;
-        // Chebyshev approximation on (0, 0.125) deg 17.
-        // Max observed error 5.9e-39, last 0 bits.
-        y -= 0x8000000000000000000000000000000; // 0.0625
-        r = 0x729257631587063e249ff; // 5.09e-14
-        r = ((r * y) / FIXED_1) + 0x729257631587063e249ff; // 5.09e-14
-        r = ((r * y) / FIXED_1) + 0x72928a4ec10f332feaad08; // 8.14e-13
-        r = ((r * y) / FIXED_1) + 0x6b67b4051803077618e97fd; // 1.22e-11
-        r = ((r * y) / FIXED_1) + 0x5dfabd83c2c9d04f969b2bb9; // 1.71e-10
-        r = ((r * y) / FIXED_1) + 0x4c5bb9fd99e4276d168f24c94; // 2.22e-09
-        r = ((r * y) / FIXED_1) + 0x3944cb7e336c15ceaeb49c6d65; // 2.67e-08
-        r = ((r * y) / FIXED_1) + 0x275f4be6c3584f004dd1ce0cd2c; // 2.93e-07
-        r = ((r * y) / FIXED_1) + 0x189b8f703a17315f81990a82a490; // 2.93e-06
-        r = ((r * y) / FIXED_1) + 0xdd780af20ad0bc6966ef13ed0f22; // 2.64e-05
-        r = ((r * y) / FIXED_1) + 0x6ebc057905685e34b37ba432f9179; // 0.000211
-        r = ((r * y) / FIXED_1) + 0x30724264f25da9370e82dcc672da8a; // 0.00148
-        r = ((r * y) / FIXED_1) + 0x122ad8e5dae31f74a57112c9a292113; // 0.00887
-        r = ((r * y) / FIXED_1) + 0x5ad63c7d466f9d473b355df60c99bf5; // 0.0444
-        r = ((r * y) / FIXED_1) + 0x16b58f1f519be751cecd577d83277b28; // 0.177
-        r = ((r * y) / FIXED_1) + 0x4420ad5df4d3b5f56c68067889726a54; // 0.532
-        r = ((r * y) / FIXED_1) + 0x88415abbe9a76bead8d00cf112e4d4a2; // 1.06
-        r = ((r * y) / FIXED_1) + 0x88415abbe9a76bead8d00cf112e4d4a9; // 1.06
+        // x is now in the range (-42, 136) * 1e18. Convert to (-42, 136) * 2**96
+        // for more intermediate precision and a binary basis. This base conversion
+        // is a multiplication by 1e18 / 2**96 = 5**18 / 2**78.
+        x = (x << 78) / 5**18;
 
-        // Multiply with the non-residual terms.
-        x = -x;
-        // e ^ -32
-        if ((x & int256(0x0000000000000000000000000000001000000000000000000000000000000000)) != 0) {
-            r = (r * int256(0x00000000000000000000000000000000000000f1aaddd7742e56d32fb9f99744)) /
-                int256(0x0000000000000000000000000043cbaf42a000812488fc5c220ad7b97bf6e99e); // * e ^ -32
+        // Reduce range of x to (-½ ln 2, ½ ln 2) * 2**96 by factoring out powers of two
+        // such that exp(x) = exp(x') * 2**k, where k is an integer.
+        // Solving this gives k = round(x / log(2)) and x' = x - k * log(2).
+        int256 k = ((x << 96) / 54916777467707473351141471128 + 2**95) >> 96;
+        x = x - k * 54916777467707473351141471128;
+        // k is in the range [-61, 195].
+
+        // Evaluate using a (6, 7)-term rational approximation
+        int256 p =                477854134370404556630342282363;
+        p = (p * x >> 96) +     16718958074186125785429723300994;
+        p = (p * x >> 96) +    267406022731302253162841045679923;
+        p = (p * x >> 96) +   2405842938758026514885988413895746;
+        p = (p * x >> 96) +  12025579931005125156911976381633042;
+        p = p * x         + (26449188498355588339771844097777124 << 96);
+        // We leave p in 2**192 basis so we don't need to scale it back up for the division.
+        int256 q = x      -      2855989394907223263936484059900;
+        q = (q * x >> 96) +     50020603652535783019961831881945;
+        q = (q * x >> 96) -    533845033583426703283633433725380;
+        q = (q * x >> 96) +   3604857256930695427073651918091429;
+        q = (q * x >> 96) -  14423608567350463180887372962807573;
+        q = (q * x >> 96) +  26449188498355588339934803723976023;
+       int256 r;
+        assembly {
+            // Div in assembly because solidity adds a zero check despite the `unchecked`.
+            // The q polynomial is known not to have zeros in the domain. (All roots are complex)
+            // No scaling required because p is already 2**96 too large.
+            r := sdiv(p, q)
         }
-        // e ^ -16
-        if ((x & int256(0x0000000000000000000000000000000800000000000000000000000000000000)) != 0) {
-            r = (r * int256(0x00000000000000000000000000000000000afe10820813d65dfe6a33c07f738f)) /
-                int256(0x000000000000000000000000000005d27a9f51c31b7c2f8038212a0574779991); // * e ^ -16
-        }
-        // e ^ -8
-        if ((x & int256(0x0000000000000000000000000000000400000000000000000000000000000000)) != 0) {
-            r = (r * int256(0x0000000000000000000000000000000002582ab704279e8efd15e0265855c47a)) /
-                int256(0x0000000000000000000000000000001b4c902e273a58678d6d3bfdb93db96d02); // * e ^ -8
-        }
-        // e ^ -4
-        if ((x & int256(0x0000000000000000000000000000000200000000000000000000000000000000)) != 0) {
-            r = (r * int256(0x000000000000000000000000000000001152aaa3bf81cb9fdb76eae12d029571)) /
-                int256(0x00000000000000000000000000000003b1cc971a9bb5b9867477440d6d157750); // * e ^ -4
-        }
-        // e ^ -2
-        if ((x & int256(0x0000000000000000000000000000000100000000000000000000000000000000)) != 0) {
-            r = (r * int256(0x000000000000000000000000000000002f16ac6c59de6f8d5d6f63c1482a7c86)) /
-                int256(0x000000000000000000000000000000015bf0a8b1457695355fb8ac404e7a79e3); // * e ^ -2
-        }
-        // e ^ -1
-        if ((x & int256(0x0000000000000000000000000000000080000000000000000000000000000000)) != 0) {
-            r = (r * int256(0x000000000000000000000000000000004da2cbf1be5827f9eb3ad1aa9866ebb3)) /
-                int256(0x00000000000000000000000000000000d3094c70f034de4b96ff7d5b6f99fcd8); // * e ^ -1
-        }
-        // e ^ -0.5
-        if ((x & int256(0x0000000000000000000000000000000040000000000000000000000000000000)) != 0) {
-            r = (r * int256(0x0000000000000000000000000000000063afbe7ab2082ba1a0ae5e4eb1b479dc)) /
-                int256(0x00000000000000000000000000000000a45af1e1f40c333b3de1db4dd55f29a7); // * e ^ -0.5
-        }
-        // e ^ -0.25
-        if ((x & int256(0x0000000000000000000000000000000020000000000000000000000000000000)) != 0) {
-            r = (r * int256(0x0000000000000000000000000000000070f5a893b608861e1f58934f97aea57d)) /
-                int256(0x00000000000000000000000000000000910b022db7ae67ce76b441c27035c6a1); // * e ^ -0.25
-        }
-        // e ^ -0.125
-        if ((x & int256(0x0000000000000000000000000000000010000000000000000000000000000000)) != 0) {
-            r = (r * int256(0x00000000000000000000000000000000783eafef1c0a8f3978c7f81824d62ebf)) /
-                int256(0x0000000000000000000000000000000088415abbe9a76bead8d00cf112e4d4a8); // * e ^ -0.125
-        }
+        // r should be in the range (0.6, 1.5) * 2**96.
+
+        // We now need to multiply r by 2**k and convert it back to base 1e18.
+        // Base conversion is a multiplication by 1e18 / 2**96 = 5**18 / 2**78.
+        // We do an extra shift left of 117 so the right shift is always by
+        // a positive amount.
+        r = (r * (5**18 << 117)) >> uint256((117 + 78) - k);
+
+        return r;
     }}
-
-
 }
