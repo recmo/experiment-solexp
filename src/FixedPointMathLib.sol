@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.10;
 
-import "./test/console.sol";
-
 library FixedPointMathLib {
         // 1
     int256 private constant FIXED_1 = int256(0x0000000000000000000000000000000080000000000000000000000000000000);
@@ -148,7 +146,9 @@ library FixedPointMathLib {
         }
     }
 
-    function exp_m(int256 x) internal returns (int256) { unchecked {
+    // Computes e^x in 1e18 fixed point.
+    // Consumes 456 gas.
+    function exp(int256 x) internal returns (int256) { unchecked {
         // Input x is in fixed point format, with scale factor 1/1e18.
 
         // When the result is < 0.5 we return zero. This happens when
@@ -158,7 +158,7 @@ library FixedPointMathLib {
         }
 
         // When the result is > (2**255 - 1) / 1e18 we can not represent it
-        // as an int256. This happens when x >= floor(log((2**255 -1) / 1e18) * 1e18).
+        // as an int256. This happens when x >= floor(log((2**255 -1) / 1e18) * 1e18) ~ 135.
         if (x >= 135305999368893231589) {
             revert("Overflow");
         }
@@ -176,6 +176,7 @@ library FixedPointMathLib {
         // k is in the range [-61, 195].
 
         // Evaluate using a (6, 7)-term rational approximation
+        // TODO: Make p monic and add merge the scale with the basis conversion.
         int256 p =                477854134370404556630342282363;
         p = (p * x >> 96) +     16718958074186125785429723300994;
         p = (p * x >> 96) +    267406022731302253162841045679923;
