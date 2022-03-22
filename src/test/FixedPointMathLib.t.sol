@@ -24,9 +24,17 @@ contract FixedPointMathLibTest is DSTest {
         console.logInt(FixedPointMathLib.exp(5e18));
     }
 
-    function testExp2() public {
+    function testExpGas() public {
+        uint g0 = gasleft();
         FixedPointMathLib.exp(133e18);
+        uint g1 = gasleft();
         FixedPointMathLib.exp(-23e18);
+        uint g2 = gasleft();
+        FixedPointMathLib.exp(5e18);
+        uint g3 = gasleft();
+        console.logUint(g0 - g1);
+        console.logUint(g1 - g2);
+        console.logUint(g2 - g3);
     }
 
     function testExp3() public {
