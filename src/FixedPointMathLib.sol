@@ -147,7 +147,6 @@ library FixedPointMathLib {
     }
 
     // Computes e^x in 1e18 fixed point.
-    // Consumes 456 gas.
     function exp(int256 x) internal returns (int256) { unchecked {
         // Input x is in fixed point format, with scale factor 1/1e18.
 
