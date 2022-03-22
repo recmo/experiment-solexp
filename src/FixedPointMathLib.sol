@@ -35,10 +35,10 @@ library FixedPointMathLib {
 
         // Evaluate using a (6, 7)-term rational approximation
         // p is made monic, we will multiply by a scale factor later
-        int256 y = x      +     1346386616545796478920950773328;
-        y = (y * x >> 96) +    57155421227552351082224309758442;
-        int256 p = y + x  -    94201549194550492254356042504812;
-        p = (p * y >> 96) + 28719021644029726153956944680412240;
+        int256 p = x      +     2772001395605857295435445496992;
+        p = (p * x >> 96) +    44335888930127919016834873520032;
+        p = (p * x >> 96) +   398888492587501845352592340339721;
+        p = (p * x >> 96) +  1993839819670624470859228494792842;
         p = p * x         + (4385272521454847904632057985693276 << 96);
         // We leave p in 2**192 basis so we don't need to scale it back up for the division.
         // Evaluate using using Knuth's scheme from p. 491.
