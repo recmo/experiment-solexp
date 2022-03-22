@@ -8,10 +8,6 @@ import "./console.sol";
 contract FixedPointMathLibTest is DSTest {
     function setUp() public {}
 
-    function testExp() public {
-        assertEq(FixedPointMathLib.expWad(-1e18), 367879441171442321);
-    }
-
     function testExp1() public {
         assertEq(FixedPointMathLib.exp(-1e18), 367879441171442321);
     }
@@ -24,12 +20,18 @@ contract FixedPointMathLibTest is DSTest {
         FixedPointMathLib.exp(135305999368893231588);
     }
 
-    function testExpM() public {
+    function testSome() public {
+        console.logInt(FixedPointMathLib.exp(5e18));
+    }
+
+    function testExp2() public {
         FixedPointMathLib.exp(133e18);
-        FixedPointMathLib.exp(100e18);
+        FixedPointMathLib.exp(-23e18);
+    }
+
+    function testExp3() public {
+        FixedPointMathLib.exp(133e18);
         FixedPointMathLib.exp(10e18);
-        FixedPointMathLib.exp(1e18);
-        FixedPointMathLib.exp(-1e18);
         FixedPointMathLib.exp(-23e18);
     }
 }
