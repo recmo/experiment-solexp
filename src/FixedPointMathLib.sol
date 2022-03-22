@@ -147,7 +147,7 @@ library FixedPointMathLib {
     }
 
     // Computes e^x in 1e18 fixed point.
-    function exp(int256 x) internal returns (int256) { unchecked {
+    function exp(int256 x) internal returns (int256 r) { unchecked {
         // Input x is in fixed point format, with scale factor 1/1e18.
 
         // When the result is < 0.5 we return zero. This happens when
@@ -189,7 +189,6 @@ library FixedPointMathLib {
         q = (q * x >> 96) +   3604857256930695427073651918091429;
         q = (q * x >> 96) -  14423608567350463180887372962807573;
         q = (q * x >> 96) +  26449188498355588339934803723976023;
-       int256 r;
         assembly {
             // Div in assembly because solidity adds a zero check despite the `unchecked`.
             // The q polynomial is known not to have zeros in the domain. (All roots are complex)
@@ -204,8 +203,6 @@ library FixedPointMathLib {
         //  * the 1e18 / 2**96 factor for base converison.
         // We do all of this at once, with an intermediate result in 2**213 basis
         // so the final right shift is always by a positive amount.
-        r = (r * 3822833074963236453042738258902158003155416615667) >> uint256((117 + 78) - k);
-
-        return r;
+        r = int(uint(r) * 3822833074963236453042738258902158003155416615667 >> uint256((117 + 78) - k));
     }}
 }
