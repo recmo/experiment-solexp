@@ -14,7 +14,7 @@ library FixedPointMathLib {
 
     // Integer log2
     // @returns floor(log2(x)) if x is nonzero, otherwise 0.
-    // Consumes about 320 gas. This could have been an 3 gas EVM opcode though.
+    // Consumes 317 gas. This could have been an 3 gas EVM opcode though.
     function ilog2(uint256 x) internal returns (uint256 r) {
         unchecked {
             // Repeat first zero all the way to the right
@@ -39,12 +39,13 @@ library FixedPointMathLib {
             x |= x >> 32;
             x |= x >> 64;
             x |= x >> 128;
+            // No need to clear the other chunks
 
-            // Map to 0-31 using the B(2,32) de Bruijn sequence 0x077CB531
+            // Map to 0-31 using the B(2, 5) de Bruijn sequence 0x077CB531.
             // See <https://en.wikipedia.org/wiki/De_Bruijn_sequence#Finding_least-_or_most-significant_set_bit_in_a_word>
             x = ((x * 0x077CB531) >> 27) & 0x1f;
 
-            // Use a bytes32 lookup table
+            // Use a bytes32 32 entry lookup table
             assembly {
                 // Need assembly here because solidity introduces an uncessary bounds
                 // check.

@@ -26,6 +26,35 @@ contract FixedPointMathLibTest is DSTest {
         }
     }
 
+    function testIlogGas() public {
+        uint256 count = 0;
+        uint256 sum = 0;
+        for(uint256 i = 1; i < 255; i++) {
+            uint256 k = (1 << i) - 1;
+            uint g0 = gasleft();
+            FixedPointMathLib.ilog2(k);
+            uint g1 = gasleft();
+            sum += g0 - g1;
+            ++count;
+            ++k;
+            g0 = gasleft();
+            FixedPointMathLib.ilog2(k);
+            g1 = gasleft();
+            sum += g0 - g1;
+            ++count;
+            ++k;
+            g0 = gasleft();
+            FixedPointMathLib.ilog2(k);
+            g1 = gasleft();
+            sum += g0 - g1;
+            ++count;
+        }
+        console.logUint(count);
+        console.logUint(sum);
+        console.logUint(sum / count);
+        console.logUint(sum % count);
+    }
+
     function testLn1() public {
         assertEq(FixedPointMathLib.ln(1e18), 0);
     }
