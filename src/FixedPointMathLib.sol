@@ -13,11 +13,12 @@ library FixedPointMathLib {
     }
 
     // Integer log2
-    // @returns floor(log2(x)) if x is nonzero, otherwise 0.
+    // @returns floor(log2(x)) if x is nonzero, otherwise 0. This is the same
+    //          as the location of the highest set bit.
     // Consumes 317 gas. This could have been an 3 gas EVM opcode though.
     function ilog2(uint256 x) internal returns (uint256 r) {
         unchecked {
-            // Repeat first zero all the way to the right
+            // Repeat first bit all the way to the right
             x |= x >> 1;
             x |= x >> 2;
             x |= x >> 4;
@@ -27,7 +28,7 @@ library FixedPointMathLib {
             x |= x >> 64;
             x |= x >> 128;
 
-            // Count 32 bit chunks
+            // Count in 32 bit chunks
             r = x & 0x100000001000000010000000100000001000000010000000100000001;
             r *= 0x20000000200000002000000020000000200000002000000020;
             r >>= 224;
