@@ -8,6 +8,28 @@ import "./console.sol";
 contract FixedPointMathLibTest is DSTest {
     function setUp() public {}
 
+    function testIlog1() public {
+        FixedPointMathLib.ilog2(2 ** 196 - 1);
+    }
+
+    function testIlog2() public {
+        FixedPointMathLib.ilog2(1e18);
+        FixedPointMathLib.ilog2(1e20);
+    }
+
+    function testIlog() public {
+        assertEq(FixedPointMathLib.ilog2(0), 0);
+        for(uint256 i = 1; i < 255; i++) {
+            assertEq(FixedPointMathLib.ilog2((1 << i) - 1), i - 1);
+            assertEq(FixedPointMathLib.ilog2((1 << i)), i);
+            assertEq(FixedPointMathLib.ilog2((1 << i) + 1), i);
+        }
+    }
+
+    function testLn1() public {
+        assertEq(FixedPointMathLib.ln(1e18), 0);
+    }
+
     function testExp1() public {
         assertEq(FixedPointMathLib.exp(-1e18), 367879441171442321);
     }
