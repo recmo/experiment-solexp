@@ -57,6 +57,10 @@ contract FixedPointMathLibTest is DSTest {
         console.Log("gas_var", (sum_sq - sum * sum / count)/ (count - 1));
     }
 
+    function testLn1() public {
+        assertEq(FixedPointMathLib.ln(1e18), 0);
+    }
+
     function testLn() public {
         assertEq(FixedPointMathLib.ln(1e18), 0);
 

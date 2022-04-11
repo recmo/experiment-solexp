@@ -8,10 +8,6 @@ library FixedPointMathLib {
     error Overflow();
     error LnNegativeUndefined();
 
-    function ilog2_pub(uint256 x) public returns (uint256 r) {
-        return ilog2(x);
-    }
-
     // Integer log2 (alternative implementation)
     // @returns floor(log2(x)) if x is nonzero, otherwise 0.
     // Consumes 317 gas. This could have been an 3 gas EVM opcode though.
@@ -71,9 +67,13 @@ library FixedPointMathLib {
         }
     }
 
+    function ln_pub(int256 x) public returns (int256 r) {
+        return ln(x);
+    }
+
     // Computes ln(x) in 1e18 fixed point.
     // Reverts if x is negative or zero.
-    // Consumes 698 gas.
+    // Consumes 670 gas.
     function ln(int256 x) internal returns (int256 r) { unchecked {
         if (x < 1) {
             if (x < 0) revert LnNegativeUndefined();
@@ -87,13 +87,10 @@ library FixedPointMathLib {
 
         // Reduce range of x to (1, 2) * 2**96
         // ln(2^k * x) = k * ln(2) + ln(x)
+        // Note: inlining ilog2 saves 8 gas.
         int256 k = int256(ilog2(uint256(x))) - 96;
-        //emit log_named_int("k", k);
-        if (k > 0) {
-            x >>= uint256(k);
-        } else {
-            x <<= uint256(-k);
-        }
+        x <<= uint256(159 - k);
+        x = int256(uint256(x) >> 159);
 
         // Evaluate using a (8, 8)-term rational approximation
         // p is made monic, we will multiply by a scale factor later
