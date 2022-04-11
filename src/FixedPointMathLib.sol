@@ -9,7 +9,7 @@ library FixedPointMathLib {
     error LnNegativeUndefined();
 
     function ilog2_pub(uint256 x) public returns (uint256 r) {
-        return ilog2_alt(x);
+        return ilog2(x);
     }
 
     // Integer log2 (alternative implementation)
@@ -57,31 +57,17 @@ library FixedPointMathLib {
     // Integer log2
     // @returns floor(log2(x)) if x is nonzero, otherwise 0. This is the same
     //          as the location of the highest set bit.
-    // Consumes 292 gas. This could have been an 3 gas EVM opcode though.
+    // Consumes 271 gas. This could have been an 3 gas EVM opcode though.
     function ilog2(uint256 x) internal returns (uint256 r) {
         assembly {
             r := shl(7, gt(x, 0xffffffffffffffffffffffffffffffff))
-            x := shr(r, x)
-            let s
-            s := shl(6, gt(x, 0xffffffffffffffff))
-            r := or(r, s)
-            x := shr(s, x)
-            s := shl(5, gt(x, 0xffffffff))
-            r := or(r, s)
-            x := shr(s, x)
-            s := shl(4, gt(x, 0xffff))
-            r := or(r, s)
-            x := shr(s, x)
-            s := shl(3, gt(x, 0xff))
-            r := or(r, s)
-            x := shr(s, x)
-            s := shl(2, gt(x, 0xf))
-            r := or(r, s)
-            x := shr(s, x)
-            s := shl(1, gt(x, 0x3))
-            r := or(r, s)
-            x := shr(s, x)
-            r := or(r, shr(1, x))
+            r := or(r, shl(6, gt(shr(r, x), 0xffffffffffffffff)))
+            r := or(r, shl(5, gt(shr(r, x), 0xffffffff)))
+            r := or(r, shl(4, gt(shr(r, x), 0xffff)))
+            r := or(r, shl(3, gt(shr(r, x), 0xff)))
+            r := or(r, shl(2, gt(shr(r, x), 0xf)))
+            r := or(r, shl(1, gt(shr(r, x), 0x3)))
+            r := or(r, gt(shr(r, x), 0x1))
         }
     }
 
