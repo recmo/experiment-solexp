@@ -57,7 +57,71 @@ contract FixedPointMathLibTest is DSTest {
 
     function testLn1() public {
         assertEq(FixedPointMathLib.ln(1e18), 0);
+
+        // Actual: 999999999999999999.8674576…
+        assertEq(FixedPointMathLib.ln(2718281828459045235), 999999999999999999);
+
+        // Actual: 2461607324344817917.963296…
+        assertEq(FixedPointMathLib.ln(11723640096265400935), 2461607324344817918);
     }
+
+    function testLnSmall() public {
+        // TODO: What causes the precision loss for very small inputs?
+
+        // Actual: -41446531673892822312.3238461…
+        assertEq(FixedPointMathLib.ln(1), -41446531673896158722);
+
+        // Actual: -37708862055609454006.40601608…
+        assertEq(FixedPointMathLib.ln(42), -37708862055609484714);
+
+        // Actual: -32236191301916639576.251880365581…
+        assertEq(FixedPointMathLib.ln(1e4), -32236191301916640051);
+
+        // Actual: -20723265836946411156.161923092…
+        assertEq(FixedPointMathLib.ln(1e9), -20723265836946411157);
+    }
+
+    function testLnBig() public {
+        // Actual: 135305999368893231589.070344787…
+        // TODO: This is broken. Inputs above 2**170 seem to overflow.
+        assertEq(FixedPointMathLib.ln(2**255 - 1), 105358261808867457588);
+
+        // Actual: 76388489021297880288.605614463571…
+        assertEq(FixedPointMathLib.ln(2**170), 76388489021297880288);
+
+        // Actual: 47276307437780177293.081865…
+        assertEq(FixedPointMathLib.ln(2**128), 47276307437780177293);
+    }
+
+    function testLnGas() public {
+        uint256 count = 0;
+        uint256 sum = 0;
+        for(uint256 i = 1; i < 255; i++) {
+            int256 k = int256(1 << i) - 1;
+            uint g0 = gasleft();
+            FixedPointMathLib.ln(k);
+            uint g1 = gasleft();
+            sum += g0 - g1;
+            ++count;
+            ++k;
+            g0 = gasleft();
+            FixedPointMathLib.ln(k);
+            g1 = gasleft();
+            sum += g0 - g1;
+            ++count;
+            ++k;
+            g0 = gasleft();
+            FixedPointMathLib.ln(k);
+            g1 = gasleft();
+            sum += g0 - g1;
+            ++count;
+        }
+        console.logUint(count);
+        console.logUint(sum);
+        console.logUint(sum / count);
+        console.logUint(sum % count);
+    }
+
 
     function testExp1() public {
         assertEq(FixedPointMathLib.exp(-1e18), 367879441171442321);

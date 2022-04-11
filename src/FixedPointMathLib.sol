@@ -74,10 +74,12 @@ library FixedPointMathLib {
     event log_named_int          (string key, int val);
 
     // Computes ln(x) in 1e18 fixed point.
+    // Reverts if x is negative or zero.
+    // Consumes about 757 gas.
     function ln(int256 x) internal returns (int256 r) { unchecked {
         if (x < 0) revert LnNegativeUndefined();
         if (x < 1) revert Overflow();
-        emit log_named_int("x", x);
+        // emit log_named_int("x", x);
 
         // Convert x to 2**96
         x = (x << 78) / 5**18;
@@ -85,13 +87,13 @@ library FixedPointMathLib {
         // Reduce range of x to (1, 2) * 2**96
         // ln(2^k * x) = k * ln(2) + ln(x)
         int256 k = int256(ilog2(uint256(x))) - 96;
-        emit log_named_int("k", k);
+        //emit log_named_int("k", k);
         if (k > 0) {
             x >>= uint256(k);
         } else {
             x <<= uint256(-k);
         }
-        emit log_named_int("x", x);
+        //emit log_named_int("x", x);
 
         // Evaluate using a (8, 8)-term rational approximation
         // p is made monic, we will multiply by a scale factor later
@@ -102,7 +104,7 @@ library FixedPointMathLib {
         p = (p * x >> 96) -    45023709667254063763336534515857;
         p = (p * x >> 96) -    14706773417378608786704636184526;
         p = p * x         -     (795164235651350426258249787498 << 96);
-        emit log_named_int("p", p);
+        //emit log_named_int("p", p);
         // We leave p in 2**192 basis so we don't need to scale it back up for the division.
         // q is monic by convention
         int256 q = x      +     5573035233440673466300451813936;
@@ -112,18 +114,18 @@ library FixedPointMathLib {
         q = (q * x >> 96) +   204048457590392012362485061816622;
         q = (q * x >> 96) +    31853899698501571402653359427138;
         q = (q * x >> 96) +      909429971244387300277376558375;
-        emit log_named_int("q", q);
+        //emit log_named_int("q", q);
         assembly {
             // Div in assembly because solidity adds a zero check despite the `unchecked`.
             // The q polynomial is known not to have zeros in the domain. (All roots are complex)
             // No scaling required because p is already 2**96 too large.
             r := sdiv(p, q)
         }
-        emit log_named_int("r", r);
+        //emit log_named_int("r", r);
         
         // Multiply by scale factor
         r = (r * 439668470185123797622540459591) >> 96;
-        emit log_named_int("r", r);
+        //emit log_named_int("r", r);
 
         // Add back powers of two
         // r += k * ln(2) * 1e18
@@ -132,7 +134,7 @@ library FixedPointMathLib {
         // Convert back to 1e18 basis
         r = (r * 5**18) >> 78;
 
-        emit log_named_int("r", r);
+        //emit log_named_int("r", r);
     }}
 
     // Computes e^x in 1e18 fixed point.
