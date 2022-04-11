@@ -4,6 +4,19 @@ pragma solidity >=0.4.22 <0.9.0;
 library console {
     address constant CONSOLE_ADDRESS = address(0x000000000000000000636F6e736F6c652e6c6f67);
 
+    // Copied from https://github.com/dapphub/ds-test/blob/master/src/test.sol
+    event log_named_int          (string key, int val);
+    event log_named_uint         (string key, uint val);
+
+
+    function Log(string memory name, int p0) internal {
+        emit log_named_int(name, p0);
+    }
+
+    function Log(string memory name, uint p0) internal {
+        emit log_named_uint(name, p0);
+    }
+
     function _sendLogPayload(bytes memory payload) private view {
         uint256 payloadLength = payload.length;
         address consoleAddress = CONSOLE_ADDRESS;

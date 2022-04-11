@@ -71,18 +71,19 @@ library FixedPointMathLib {
         }
     }
 
-    event log_named_int          (string key, int val);
-
     // Computes ln(x) in 1e18 fixed point.
     // Reverts if x is negative or zero.
-    // Consumes about 757 gas.
+    // Consumes 698 gas.
     function ln(int256 x) internal returns (int256 r) { unchecked {
-        if (x < 0) revert LnNegativeUndefined();
-        if (x < 1) revert Overflow();
-        // emit log_named_int("x", x);
+        if (x < 1) {
+            if (x < 0) revert LnNegativeUndefined();
+            revert Overflow();
+        }
 
-        // Convert x to 2**96
-        x = (x << 78) / 5**18;
+        // We want to convert x from 10**18 fixed point to 2**96 fixed point.
+        // We do this by multiplying by 2**96 / 10**18.
+        // But since ln(x * C) = ln(x) + ln(C), we can simply do nothing here
+        // and add ln(2**96 / 10**18) at the end.
 
         // Reduce range of x to (1, 2) * 2**96
         // ln(2^k * x) = k * ln(2) + ln(x)
@@ -93,7 +94,6 @@ library FixedPointMathLib {
         } else {
             x <<= uint256(-k);
         }
-        //emit log_named_int("x", x);
 
         // Evaluate using a (8, 8)-term rational approximation
         // p is made monic, we will multiply by a scale factor later
@@ -114,27 +114,27 @@ library FixedPointMathLib {
         q = (q * x >> 96) +   204048457590392012362485061816622;
         q = (q * x >> 96) +    31853899698501571402653359427138;
         q = (q * x >> 96) +      909429971244387300277376558375;
-        //emit log_named_int("q", q);
         assembly {
             // Div in assembly because solidity adds a zero check despite the `unchecked`.
             // The q polynomial is known not to have zeros in the domain. (All roots are complex)
             // No scaling required because p is already 2**96 too large.
             r := sdiv(p, q)
         }
-        //emit log_named_int("r", r);
-        
-        // Multiply by scale factor
-        r = (r * 439668470185123797622540459591) >> 96;
-        //emit log_named_int("r", r);
+        // r is in the range (0, 0.125) * 2**96
 
-        // Add back powers of two
-        // r += k * ln(2) * 1e18
-        r += 54916777467707473351141471128 * k;
-
-        // Convert back to 1e18 basis
-        r = (r * 5**18) >> 78;
-
-        //emit log_named_int("r", r);
+        // Finalization, we need to
+        // * multiply by the scale factor s = 5.549…
+        // * add ln(2**96 / 10**18)
+        // * add k * ln(2)
+        // * multiply by 10**18 / 2**96 = 5**18 >> 78
+        // mul s * 5e18 * 2**96, base is now 5**18 * 2**192
+        r *= 1677202110996718588342820967067443963516166;
+        // add ln(2) * k * 5e18 * 2**192
+        r += 16597577552685614221487285958193947469193820559219878177908093499208371 * k;
+        // add ln(2**96 / 10**18) * 5e18 * 2**192
+        r += 600920179829731861736702779321621459595472258049074101567377883020018308;
+        // base conversion: mul 2**18 / 2**192
+        r >>= 174;
     }}
 
     // Computes e^x in 1e18 fixed point.
